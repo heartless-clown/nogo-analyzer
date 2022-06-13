@@ -42,6 +42,13 @@ go_library(
     importpath = "SA4000/fail",
 )
 
+go_library(
+    name = "conflicting_deps_ok",
+    srcs = ["conflicting_deps.go"],
+    importpath = "conflicting_deps/ok",
+    deps = ["@co_honnef_go_tools//version"],
+)
+
 -- ST1000_fail.go --
 package fail
 -- ST1000_ok.go --
@@ -57,6 +64,25 @@ func alwaysTrue(a int) string {
 
 	return "b"
 }
+-- conflicting_deps.go --
+// Package main has some top level doc
+package main
+
+import "honnef.co/go/tools/version"
+
+func main() {
+	print(version.Version)
+}
+-- conflicting_go_deps.bzl --
+load("@bazel_gazelle//:deps.bzl", "go_repository")
+
+def go_deps():
+    go_repository(
+        name = "co_honnef_go_tools",
+        importpath = "honnef.co/go/tools",
+        sum = "h1:/hemPrYIhOhy8zYrNj+069zDB68us2sMGsfkFJO0iZs=",
+        version = "v0.0.0-20190523083050-ea95bdfd59fc",
+    )
 -- WORKSPACE --
 local_repository(
     name = "bazel_gazelle",
@@ -83,6 +109,8 @@ go_wrap_sdk(
 go_register_toolchains()
 load("@com_github_sluongng_nogo_analyzer//staticcheck:deps.bzl",  "staticcheck_deps")
 staticcheck_deps()
+load("//:conflicting_go_deps.bzl", "go_deps")
+go_deps()
 # gazelle:repository go_repository name=org_golang_x_tools importpath=golang.org/x/tools
 # gazelle:repository go_repository name=com_github_burntsushi_toml importpath=github.com/BurntSushi/toml
 # gazelle:repository go_repository name=org_golang_x_exp_typeparams importpath=golang.org/x/exp/typeparams
@@ -132,6 +160,12 @@ func Test(t *testing.T) {
 				"identical expressions on the left and right side of the '==' operator",
 				"SA4000",
 			},
+		}, {
+			desc:        "has doc, lint ok, imports conflicting deps",
+			nogo:        "@//:nogo",
+			analyzers:   []string{"ST1000"},
+			target:      "//:conflicting_deps_ok",
+			wantSuccess: true,
 		},
 	} {
 		t.Run(test.desc, func(t *testing.T) {
