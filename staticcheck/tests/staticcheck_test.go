@@ -20,7 +20,7 @@ load("@com_github_sluongng_nogo_analyzer//staticcheck:def.bzl", "staticcheck_ana
 
 nogo(
     name = "nogo",
-		deps = staticcheck_analyzers(["NOGO_ANALYZER_PLACEHOLDER"]), # to be replaced in test data
+    deps = staticcheck_analyzers(["NOGO_ANALYZER_PLACEHOLDER"]), # to be replaced in test data
     visibility = ["//visibility:public"],
 )
 
@@ -57,18 +57,36 @@ func alwaysTrue(a int) string {
 
 	return "b"
 }
-`,
-		WorkspaceSuffix: `
+-- WORKSPACE --
+local_repository(
+    name = "bazel_gazelle",
+    path = "../bazel_gazelle",
+)
+local_repository(
+    name = "com_github_sluongng_nogo_analyzer",
+    path = "../com_github_sluongng_nogo_analyzer",
+)
+local_repository(
+    name = "io_bazel_rules_go",
+    path = "../io_bazel_rules_go",
+)
+local_repository(
+    name = "local_go_sdk",
+    path = "../../../external/go_sdk",
+)
+load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains", "go_wrap_sdk")
+go_rules_dependencies()
+go_wrap_sdk(
+    name = "go_sdk",
+    root_file = "@local_go_sdk//:ROOT",
+)
+go_register_toolchains()
+load("@com_github_sluongng_nogo_analyzer//staticcheck:deps.bzl",  "staticcheck_deps")
+staticcheck_deps()
 # gazelle:repository go_repository name=org_golang_x_tools importpath=golang.org/x/tools
 # gazelle:repository go_repository name=com_github_burntsushi_toml importpath=github.com/BurntSushi/toml
 # gazelle:repository go_repository name=org_golang_x_exp_typeparams importpath=golang.org/x/exp/typeparams
-
-load("@com_github_sluongng_nogo_analyzer//staticcheck:deps.bzl",  "staticcheck_deps")
-
-staticcheck_deps()
-
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
-
 gazelle_dependencies()
 `,
 	})
